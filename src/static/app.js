@@ -43,7 +43,54 @@ document.addEventListener("DOMContentLoaded", () => {
           details.participants.forEach((p) => {
             const li = document.createElement("li");
             li.className = "participant-item";
-            li.textContent = p;
+
+            // Email label
+            const span = document.createElement("span");
+            span.className = "participant-email";
+            span.textContent = p;
+
+            // Remove button (small X)
+            const removeBtn = document.createElement("button");
+            removeBtn.className = "remove-btn";
+            removeBtn.title = `Unregister ${p}`;
+            removeBtn.type = "button";
+            removeBtn.innerHTML = "✖";
+
+            // Click handler to call DELETE endpoint
+            removeBtn.addEventListener("click", async () => {
+              const confirmed = window.confirm(`Unregister ${p} from ${name}?`);
+              if (!confirmed) return;
+
+              try {
+                const resp = await fetch(
+                  `/activities/${encodeURIComponent(name)}/signup?email=${encodeURIComponent(p)}`,
+                  { method: "DELETE" }
+                );
+
+                const body = await resp.json().catch(() => ({}));
+
+                if (resp.ok) {
+                  // Refresh activities to update UI
+                  fetchActivities();
+                  messageDiv.textContent = body.message || `${p} removed`;
+                  messageDiv.className = "success";
+                  messageDiv.classList.remove("hidden");
+                  setTimeout(() => messageDiv.classList.add("hidden"), 5000);
+                } else {
+                  messageDiv.textContent = body.detail || "Failed to remove participant";
+                  messageDiv.className = "error";
+                  messageDiv.classList.remove("hidden");
+                }
+              } catch (error) {
+                messageDiv.textContent = "Failed to remove participant. Please try again.";
+                messageDiv.className = "error";
+                messageDiv.classList.remove("hidden");
+                console.error("Error removing participant:", error);
+              }
+            });
+
+            li.appendChild(span);
+            li.appendChild(removeBtn);
             ul.appendChild(li);
           });
         } else {
@@ -86,6 +133,8 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+        // Refresh activities list so the newly-signed-up participant appears immediately
+        fetchActivities();
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
